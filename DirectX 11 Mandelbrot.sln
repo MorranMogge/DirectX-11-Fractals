@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32825.248
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX 11 Mandelbrot", "DirectX 11 Mandelbrot\DirectX 11 Mandelbrot.vcxproj", "{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Debug|x64.ActiveCfg = Debug|x64
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Debug|x64.Build.0 = Debug|x64
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Debug|x86.ActiveCfg = Debug|Win32
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Debug|x86.Build.0 = Debug|Win32
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Release|x64.ActiveCfg = Release|x64
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Release|x64.Build.0 = Release|x64
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Release|x86.ActiveCfg = Release|Win32
+		{DC9D37B7-E15E-4D6A-ACE2-C54015ABB34B}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9172E9B6-108F-4552-8D6E-9226C884B417}
+	EndGlobalSection
+EndGlobal
