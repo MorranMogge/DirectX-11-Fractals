@@ -3,6 +3,13 @@
 #include <iostream>
 #include <vector>
 
+struct zoom
+{
+	uint32_t zoomValue = 1;
+	float x = 0;
+	float y = 0;
+};
+
 struct clr
 {
 	float colour[3]{1, 1, 1};
@@ -25,11 +32,21 @@ struct fractalsetinfo
 
 	bool updateTexture = false;
 	bool newCalculation = false;
+	bool swapZandC = false;
 
-	float z1 = 0;
-	float z2 = 0;
+	float rV = 0;
+	float iV = 0;
+
+
+	float offsetX = 0;//-0.750222f;
+	float offsetY = 0;//0.031161f;
 
 	int set = 0;
+
+	std::string currentFunction = "z*z+c";
+	int doNewFractal = 0;
+
+	std::vector<zoom> zooming;
 };
 
 //Add something that can keep track of all the zooming done and navigate back and forth

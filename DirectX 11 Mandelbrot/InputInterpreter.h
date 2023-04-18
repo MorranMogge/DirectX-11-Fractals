@@ -1,6 +1,7 @@
 #pragma once
 
+#include <complex>
 #include <string>
 #include "FractalEngineStructs.h"
 
-int IntertpretAndCalculate(const std::string& input);
+std::vector<int> InterpretAndCalculate(const std::string& input, fractalsetinfo* fractal);

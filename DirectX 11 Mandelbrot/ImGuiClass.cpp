@@ -8,6 +8,7 @@
 #include "imGui\imstb_truetype.h"
 #include "imGui\imgui_impl_win32.h"
 #include <string>
+#include "InputInterpreter.h"
 
 ImGuiClass::ImGuiClass()
 	:renderingInfo(nullptr), mandelSrv(nullptr)
@@ -49,10 +50,14 @@ void ImGuiClass::renderMandelbrot()
 	ImGui::NewFrame();
 	{
 		static const char* items[]{"32x32", "64x64", "128x128", "256x256" , "512x512", "1024x1024", "2048x2048" };
-		static const char* sets[]{ "Mandelbrot set", "Julia set"};
+		static const char* sets[]{ "Mandelbrot set", "Julia set", "Own Function"};
 
 		static int selectedRes = 5;
 		static int selectedSet = 0;
+		char function[64] = "";
+
+		static float zoomX = 0.f;
+		static float zoomY = 0.f;
 
 		std::string resolution = "";
 
@@ -89,24 +94,86 @@ void ImGuiClass::renderMandelbrot()
 			{
 				if (selectedSet == 0)
 				{
-					renderingInfo->z1 = 0;
-					renderingInfo->z2 = 0;
+					renderingInfo->rV = 0;
+					renderingInfo->iV = 0;
 				}
 				renderingInfo->set = selectedSet;
 			}
+
 			if (selectedSet == 1)
 			{
-				ImGui::SliderFloat("C1", &renderingInfo->z1, -2, 2);
-				ImGui::SliderFloat("C2", &renderingInfo->z2, -2, 2);
+				ImGui::SliderFloat("Real Value", &renderingInfo->rV, -2, 2);
+				ImGui::SliderFloat("Imaginary Value", &renderingInfo->iV, -2, 2);
+				if (ImGui::Button("Reset constants value"))
+				{
+					renderingInfo->rV = 0;
+					renderingInfo->iV = 0;
+				}
+				
 			}
+			else if (selectedSet == 2)
+			{
+				std::string txt = "";
+				if (!renderingInfo->swapZandC)
+					txt = "Mandelbrot version";
+				else
+					txt = "Julia set";
+
+				ImGui::Text("Current function %s", renderingInfo->currentFunction.c_str());
+				if (ImGui::InputText("Function", function, sizeof(function)))
+					renderingInfo->currentFunction = function;
+				ImGui::Text("Current version: %s", txt.c_str());
+
+				if (ImGui::Button("Swap version"))
+					renderingInfo->swapZandC = !renderingInfo->swapZandC;
+
+				if (renderingInfo->swapZandC)
+				{
+					ImGui::SliderFloat("Real Value", &renderingInfo->rV, -2, 2);
+					ImGui::SliderFloat("Imaginary Value", &renderingInfo->iV, -2, 2);
+					if (ImGui::Button("Reset constants value"))
+					{
+						renderingInfo->rV = 0;
+						renderingInfo->iV = 0;
+					}
+				}
+
+				if (ImGui::Button("Test function"))
+				{
+					renderingInfo->doNewFractal = 1;
+				}
+
+			}
+
+			if (renderingInfo->zooming.size() == 32)
+				ImGui::Text("Max zoom limit has been reached");
+			else if (ImGui::Button("Zoom"))
+			{
+				renderingInfo->zooming.push_back(zoom());
+				renderingInfo->zooming.back().zoomValue = renderingInfo->zooming[renderingInfo->zooming.size() - 2].zoomValue * 2;
+				renderingInfo->zooming.back().x = zoomX;
+				renderingInfo->zooming.back().y = zoomY;
+				renderingInfo->maxIterations--;
+			}
+			
+			if ((ImGui::Button("Unzoom") && renderingInfo->zooming.size() > 1))
+			{
+				renderingInfo->zooming.pop_back();
+				renderingInfo->maxIterations--;
+
+			}
+
+			ImGui::SliderFloat("x", &renderingInfo->offsetX, -2.f, 2.f);
+			ImGui::SliderFloat("y", &renderingInfo->offsetY, -2.f, 2.f);
 
 			if (ImGui::Button("Add colour") && renderingInfo->colours.size() < 10)
 				renderingInfo->colours.push_back({0, 0, 0});
 
 			for (int i = 0; i < renderingInfo->colours.size(); i++)
 			{
-				/// I DO NOT KNOW WHY THIS SH*T DOES NOT WORK
-				ImGui::ColorEdit3("", &renderingInfo->colours[i].colour[0]);
+				char plsFixThis[24];
+				strcpy_s(plsFixThis, sizeof(plsFixThis), std::to_string(i).c_str());
+				ImGui::ColorEdit3(plsFixThis, &renderingInfo->colours[i].colour[0]);
 			}
 
 

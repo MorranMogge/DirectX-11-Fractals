@@ -4,13 +4,9 @@
 #include <iostream>
 
 
-bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
+bool createShaders(ID3D11Device* device, ID3D11DeviceContext* immediateContext, std::string& vShaderByteCode)
 {
-    //These do not need to exist anymore after the pipeline has been set up
-    ID3D11InputLayout* inputLayout;
-    ID3D11Buffer* vBuffer;
-    ID3D11SamplerState* sampler;
-    ID3D11RasterizerState* rasterizerState;
+
     ID3D11VertexShader* vShader;
     ID3D11PixelShader* pShader;
 
@@ -34,7 +30,7 @@ bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
         std::cerr << "Failed to create vertex shader!" << std::endl;
     }
 
-    std::string vShaderByteCode = shaderData;
+    vShaderByteCode = shaderData;
     shaderData.clear();
     reader.close();
 
@@ -56,6 +52,19 @@ bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
         std::cerr << "Failed to create pixel shader!" << std::endl;
     }
 
+    immediateContext->VSSetShader(vShader, nullptr, 0);
+    immediateContext->PSSetShader(pShader, nullptr, 0);
+
+    vShader->Release();
+    pShader->Release();
+
+    return true;
+}
+
+bool createInputLayout(ID3D11Device* device, ID3D11DeviceContext* immediateContext, std::string& vShaderByteCode)
+{
+    ID3D11InputLayout* inputLayout;
+
     D3D11_INPUT_ELEMENT_DESC inputDesc[3] =
     {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -66,7 +75,21 @@ bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
     HRESULT hr = device->CreateInputLayout(inputDesc, 3, vShaderByteCode.c_str(), vShaderByteCode.length(), &inputLayout);
 
     if (FAILED(hr))
-        std::cerr << "Failed to create pixel shader!" << std::endl;
+    {
+        std::cerr << "Failed to create input layout\n";
+        return false;
+    }
+
+    immediateContext->IASetInputLayout(inputLayout);
+    inputLayout->Release();
+
+    return true;
+}
+
+bool createVertexBuffer(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
+{
+    ID3D11Buffer* vBuffer;
+
 
     Vertex quad[6] =
     {
@@ -94,42 +117,31 @@ bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
     data.SysMemPitch = 0;
     data.SysMemSlicePitch = 0;
 
-    hr = device->CreateBuffer(&bufferDesc, &data, &vBuffer);
-
-    D3D11_SAMPLER_DESC desc;
-    desc.Filter = D3D11_FILTER_ANISOTROPIC;
-    desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    desc.MipLODBias = 0;
-    desc.MaxAnisotropy = 16;
-    desc.BorderColor[0] = desc.BorderColor[1] = desc.BorderColor[2] = desc.BorderColor[3] = 0;
-    desc.MinLOD = 0;
-    desc.MaxLOD = D3D11_FLOAT32_MAX;
-
-    hr = device->CreateSamplerState(&desc, &sampler);
-
-    D3D11_RASTERIZER_DESC descdefault;
-    descdefault.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
-    descdefault.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
-    descdefault.FrontCounterClockwise = false;
-    descdefault.DepthBias = 0;
-    descdefault.DepthBiasClamp = 0.0f;
-    descdefault.SlopeScaledDepthBias = 0.0f;
-    descdefault.DepthClipEnable = true;
-    descdefault.ScissorEnable = false;
-    descdefault.MultisampleEnable = false;
-    descdefault.AntialiasedLineEnable = false;
-
-    hr = device->CreateRasterizerState(&descdefault, &rasterizerState);
+    HRESULT hr = device->CreateBuffer(&bufferDesc, &data, &vBuffer);
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create vertex buffer\n";
+        return false;
+    }
 
 
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+
+    immediateContext->IASetVertexBuffers(0, 1, &vBuffer, &stride, &offset);
+    vBuffer->Release();
+
+    return true;
+}
+
+bool createCameraBuffer(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
+{
     struct ConstantBuffer
     {
         DirectX::XMFLOAT4X4 viewProjMatrix;
     };
 
-    // Create the constant buffer
+    // Create the constant buffer for the camera
     ID3D11Buffer* constantBuffer;
     ConstantBuffer cb;
 
@@ -156,31 +168,70 @@ bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
     cbData.SysMemSlicePitch = 0;
 
     if (FAILED(device->CreateBuffer(&cbDesc, &cbData, &constantBuffer)))
+    {
         std::cerr << "Error creating world view projection matrix constant buffer\n";
+        return false;
+    }
+
+    immediateContext->VSSetConstantBuffers(0, 1, &constantBuffer);
+    constantBuffer->Release();
 
 
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
+    return true;
+}
 
-    immediateContext->IASetInputLayout(inputLayout);
-    immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    immediateContext->IASetVertexBuffers(0, 1, &vBuffer, &stride, &offset);
+bool createSampler(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
+{
+    ID3D11SamplerState* sampler;
 
+    D3D11_SAMPLER_DESC desc;
+    desc.Filter = D3D11_FILTER_ANISOTROPIC;
+    desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    desc.MipLODBias = 0;
+    desc.MaxAnisotropy = 16;
+    desc.BorderColor[0] = desc.BorderColor[1] = desc.BorderColor[2] = desc.BorderColor[3] = 0;
+    desc.MinLOD = 0;
+    desc.MaxLOD = D3D11_FLOAT32_MAX;
 
+    HRESULT hr = device->CreateSamplerState(&desc, &sampler);
 
-    immediateContext->VSSetShader(vShader, nullptr, 0);
-    immediateContext->PSSetShader(pShader, nullptr, 0);
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create sampler state\n";
+        return false;
+    }
 
     immediateContext->PSSetSamplers(0, 1, &sampler);
-    immediateContext->VSSetConstantBuffers(0, 1, &constantBuffer);
-
-    vShader->Release();
-    pShader->Release();
-    inputLayout->Release();
     sampler->Release();
-    vBuffer->Release();
-    rasterizerState->Release();
-    constantBuffer->Release();
+
+    return true;
+}
+
+bool setPipeline(ID3D11Device* device, ID3D11DeviceContext* immediateContext)
+{
+    
+    std::string vShaderByteCode = "";
+    
+    //These do not need to exist anymore after the pipeline has been set up
+    if (!createShaders(device, immediateContext, vShaderByteCode))
+        return false;
+
+    if (!createInputLayout(device, immediateContext, vShaderByteCode))
+        return false;
+    
+    if (!createVertexBuffer(device, immediateContext))
+        return false;
+    
+    if (!createCameraBuffer(device, immediateContext))
+        return false;
+
+    if (!createSampler(device, immediateContext))
+        return false;
+
+    //Now everything is set up
+    immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     return true;
 }

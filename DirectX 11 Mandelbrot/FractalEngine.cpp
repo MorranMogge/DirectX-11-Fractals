@@ -1,6 +1,7 @@
 #include "FractalEngine.h"
 #include "D3D11Helper.h"
 #include <complex>
+#include "InputInterpreter.h"
 
 FractalEngine::FractalEngine(HWND& window, uint32_t WIDTH, uint32_t HEIGHT)
     :WIDTH(WIDTH), HEIGHT(HEIGHT), currentMaxIterations(100)
@@ -26,6 +27,7 @@ FractalEngine::FractalEngine(HWND& window, uint32_t WIDTH, uint32_t HEIGHT)
     renderingInfo.resWidth = WIDTH;
     renderingInfo.resHeight = HEIGHT;
     renderingInfo.updateTexture = false;
+    renderingInfo.zooming.push_back(zoom());
 
     if (!setupSrv())
         std::cerr << "Error creating m_mandelSrv\n";
@@ -81,6 +83,8 @@ void FractalEngine::calc()
         break;
     case 1:
         this->calcMandelbrot();
+    case 2:
+        this->calcOwnFunction();
         break;
     default:
         break;
@@ -93,19 +97,18 @@ void FractalEngine::calcMandelbrot()
     currentMaxIterations = renderingInfo.maxIterations;
 
     int count = 0;
-    int r = 0;
-    int g = 0;
-    int b = 0;
     int iterations = 0;
     set = renderingInfo.set;
 
     //Used in order to zoom in on the set
     double currentWidth = renderingInfo.resWidth;
     double currentHeight = renderingInfo.resHeight;
-    double offset[2] = { 0, 0 };
 
-    z1 = renderingInfo.z1;
-    z2 = renderingInfo.z2;
+    double zoomWidth = currentHeight * renderingInfo.zooming.back().zoomValue / (double)1;
+    double zoomHeight = zoomWidth;
+
+    rV = renderingInfo.rV;
+    iV = renderingInfo.rV;
 
 
     //Start timer
@@ -116,8 +119,9 @@ void FractalEngine::calcMandelbrot()
         for (uint32_t j = 0; j < currentHeight; j++)
         {
             //This next line tells us what position (in the coordinate system) the current pixel is at
-            std::complex<double> c((double)j / currentWidth * 4.0 - 2.0, (double)i / currentHeight * 4.0 - 2.0);
-            std::complex<double> z(z1, z2); //When mandelbrot is active these values are 0, 0
+            std::complex<double> c((double)j / (zoomWidth) * 4.0 - (2.0*pow(0.5, renderingInfo.zooming.size()-1)) + renderingInfo.offsetX, (double)i / (zoomWidth) * 4.0 - (2.0 * pow(0.5, renderingInfo.zooming.size() - 1) + renderingInfo.offsetY));
+            
+            std::complex<double> z(rV, iV); //When mandelbrot is active these values are 0, 0
 
             //If it is the julia set, then we need to make c constant
             if (set == 1) {
@@ -130,6 +134,7 @@ void FractalEngine::calcMandelbrot()
             iterations = 0;
             while (abs(z) < 2 && iterations < currentMaxIterations) {
                 z = z * z + c;
+                //z = c + c + c;
                 iterations++;
             }
 
@@ -139,6 +144,21 @@ void FractalEngine::calcMandelbrot()
 
     //Save the time it took to calculate the whole set
     renderingInfo.calcMandelTime = ((std::chrono::duration<float>)(std::chrono::system_clock::now() - start)).count();
+}
+
+void FractalEngine::calcOwnFunction()
+{
+    if (renderingInfo.doNewFractal)
+    {
+        std::vector<int> tempVec;
+        tempVec = InterpretAndCalculate(renderingInfo.currentFunction, &renderingInfo);
+        int tempInt = 0;
+        for (int i = 0; i < tempVec.size(); i++)
+        {
+            this->colourPixel(tempVec[i], tempInt);
+        }
+        renderingInfo.doNewFractal = false;
+    }
 }
 
 bool FractalEngine::setupSrv()
@@ -260,16 +280,15 @@ void FractalEngine::render()
 void FractalEngine::update()
 {
     if (renderingInfo.updateTexture || set != renderingInfo.set || currentMaxIterations != renderingInfo.maxIterations //All sets 
-        || z1 != renderingInfo.z1 || z2 != renderingInfo.z2 //Julia set
-        ) 
+        || rV != renderingInfo.rV || iV != renderingInfo.iV || renderingInfo.doNewFractal) 
     {
         if (renderingInfo.updateTexture) {
             updateSrv();
             renderingInfo.updateTexture = false;
         }
         else {
-            z1 = renderingInfo.z1;
-            z2 = renderingInfo.z2;
+            rV = renderingInfo.rV;
+            iV = renderingInfo.iV;
             set = renderingInfo.set;
             calc();
             updateSrv();

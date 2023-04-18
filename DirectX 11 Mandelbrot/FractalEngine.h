@@ -42,14 +42,16 @@ private:
 	uint32_t WIDTH;
 	uint32_t HEIGHT;
 
-	float z1 = 0;
-	float z2 = 0;
+	float rV = 0;
+	float iV = 0;
+
 	int set = 5;
 
 	int currentMaxIterations;
 
 	void calc();
 	void calcMandelbrot();
+	void calcOwnFunction();
 	bool setupSrv();
 	void updateSrv();
 	void colourPixel(int iterations, int& count);
